@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LongTail Forge — ROI Decision Engine</title>
+<style>
+  :root{
+    --navy:#0B3878;
+    --navy-deep:#082a5c;
+    --blue:#259EEF;
+    --green:#1E9E6B;
+    --amber:#E0982A;
+    --red:#C4472F;
+    --ink:#0E1B2E;
+    --paper:#F3F6FB;
+    --card:#FFFFFF;
+    --line:#DDE4F0;
+    --muted:#5C6B85;
+    --mono: 'JetBrains Mono','SF Mono',Consolas,monospace;
+    --sans: 'Inter','Segoe UI',system-ui,sans-serif;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:var(--sans);
+    background:
+      radial-gradient(1200px 600px at 100% -10%, rgba(37,158,239,0.10), transparent),
+      var(--paper);
+    color:var(--ink);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---------- Header ---------- */
+  header{
+    background:linear-gradient(120deg, var(--navy-deep), var(--navy) 60%, #0d4693);
+    color:#fff;
+    padding:22px clamp(16px,4vw,48px);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    box-shadow:0 6px 24px rgba(11,56,120,0.25);
+    position:relative;
+    overflow:hidden;
+  }
+  header::after{
+    content:"";
+    position:absolute; inset:0;
+    background:
+      repeating-linear-gradient(115deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 26px);
+    pointer-events:none;
+  }
+  .brand{display:flex; align-items:center; gap:14px; position:relative; z-index:1;}
+  .brand-mark{
+    width:42px; height:42px; border-radius:10px;
+    background:linear-gradient(135deg, var(--blue), var(--green));
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:18px; color:#082a5c;
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,0.5);
+    flex-shrink:0;
+  }
+  .brand h1{font-size:20px; font-weight:800; letter-spacing:0.2px;}
+  .brand p{font-size:12.5px; color:#BFDBFF; margin-top:2px; letter-spacing:0.3px;}
+  .header-stats{
+    display:flex; gap:28px; position:relative; z-index:1;
+  }
+  .hstat{text-align:right;}
+  .hstat .num{font-family:var(--mono); font-size:19px; font-weight:700; color:#fff;}
+  .hstat .lbl{font-size:10.5px; text-transform:uppercase; letter-spacing:0.8px; color:#9FC5F2;}
+
+  @media (max-width:760px){
+    .header-stats{display:none;}
+  }
+
+  /* ---------- Layout ---------- */
+  .shell{
+    max-width:1400px;
+    margin:0 auto;
+    padding:clamp(16px,3vw,32px);
+  }
+
+  .app-grid{
+    display:grid;
+    grid-template-columns:390px 1fr;
+    gap:22px;
+    align-items:start;
+  }
+  @media (max-width:980px){
+    .app-grid{grid-template-columns:1fr;}
+  }
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    box-shadow:0 1px 3px rgba(11,56,120,0.06), 0 12px 28px -18px rgba(11,56,120,0.25);
+  }
+
+  /* ---------- Left Panel: Form ---------- */
+  .panel-head{
+    padding:18px 20px 14px;
+    border-bottom:1px solid var(--line);
+    display:flex; align-items:center; gap:10px;
+  }
+  .panel-head .dot{width:8px;height:8px;border-radius:50%; background:var(--blue); box-shadow:0 0 0 4px rgba(37,158,239,0.15);}
+  .panel-head h2{font-size:14.5px; font-weight:700; letter-spacing:0.2px;}
+  .panel-head span{font-size:11.5px; color:var(--muted); margin-left:auto; font-family:var(--mono);}
+
+  .form-body{padding:18px 20px 20px;}
+
+  .field{margin-bottom:16px;}
+  .field label{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-size:12.5px; font-weight:600; color:var(--navy-deep); margin-bottom:6px;
+  }
+  .field label .val{font-family:var(--mono); font-size:12px; color:var(--blue); font-weight:700;}
+  .field input[type="text"]{
+    width:100%; padding:10px 12px; border-radius:8px;
+    border:1.5px solid var(--line); font-size:14px; font-family:var(--sans);
+    background:#FBFCFE; transition:border-color .15s, box-shadow .15s;
+  }
+  .field input[type="text"]:focus{
+    outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(37,158,239,0.15);
+  }
+
+  .slider-row{display:flex; align-items:center; gap:10px;}
+  input[type="range"]{
+    -webkit-appearance:none; appearance:none;
+    width:100%; height:6px; border-radius:4px;
+    background:linear-gradient(90deg, var(--blue) 0%, var(--blue) var(--fill,50%), var(--line) var(--fill,50%), var(--line) 100%);
+    cursor:pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
+    background:#fff; border:3px solid var(--navy);
+    box-shadow:0 1px 4px rgba(0,0,0,0.25);
+    cursor:pointer; margin-top:0;
+  }
+  input[type="range"]::-moz-range-thumb{
+    width:18px; height:18px; border-radius:50%;
+    background:#fff; border:3px solid var(--navy);
+    box-shadow:0 1px 4px rgba(0,0,0,0.25); cursor:pointer;
+  }
+
+  .field-hint{font-size:10.5px; color:var(--muted); margin-top:5px; line-height:1.4;}
+
+  .btn{
+    width:100%;
+    padding:13px 16px;
+    border:none; border-radius:9px;
+    font-size:14.5px; font-weight:700; letter-spacing:0.2px;
+    cursor:pointer;
+    font-family:var(--sans);
+    transition:transform .12s ease, box-shadow .12s ease, filter .12s ease;
+  }
+  .btn-primary{
+    background:linear-gradient(120deg, var(--blue), #1b7fd6);
+    color:#fff;
+    box-shadow:0 8px 20px -8px rgba(37,158,239,0.7);
+  }
+  .btn-primary:hover{filter:brightness(1.05); transform:translateY(-1px);}
+  .btn-primary:active{transform:translateY(0px);}
+
+  .examples-wrap{padding:16px 20px 20px; border-top:1px solid var(--line);}
+  .examples-title{
+    font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.7px;
+    color:var(--muted); margin-bottom:10px;
+  }
+  .example-chip{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:9px 12px; border-radius:8px;
+    border:1px solid var(--line);
+    background:#FBFCFE;
+    cursor:pointer; margin-bottom:7px;
+    transition:border-color .15s, background .15s;
+    font-size:12.5px;
+  }
+  .example-chip:hover{border-color:var(--blue); background:#F0F8FF;}
+  .example-chip .ename{font-weight:600; color:var(--ink);}
+  .example-chip .escore{
+    font-family:var(--mono); font-size:11px; font-weight:700;
+    padding:2px 8px; border-radius:20px; color:#fff;
+  }
+
+  /* ---------- Right Panel ---------- */
+  .results-top{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:22px;
+    margin-bottom:22px;
+  }
+  @media (max-width:700px){ .results-top{grid-template-columns:1fr;} }
+
+  .score-card{padding:26px 24px;}
+  .score-card .sku-name{
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px;
+    color:var(--muted); margin-bottom:2px;
+  }
+  .score-card .sku-title{font-size:19px; font-weight:800; color:var(--navy-deep); margin-bottom:18px;}
+
+  .score-display{display:flex; align-items:flex-end; gap:16px; margin-bottom:8px;}
+  .score-number{
+    font-family:var(--mono); font-size:64px; font-weight:800; line-height:0.85;
+    transition:color .3s;
+  }
+  .score-outof{font-size:15px; color:var(--muted); font-weight:600; padding-bottom:8px;}
+
+  .score-bar-track{
+    width:100%; height:10px; border-radius:6px; background:var(--line);
+    overflow:hidden; margin-top:14px;
+  }
+  .score-bar-fill{
+    height:100%; border-radius:6px;
+    transition:width .5s cubic-bezier(.4,0,.2,1), background .3s;
+  }
+  .score-scale{
+    display:flex; justify-content:space-between; font-size:9.5px; color:var(--muted);
+    font-family:var(--mono); margin-top:5px;
+  }
+
+  .tier-card{
+    padding:26px 24px;
+    display:flex; flex-direction:column; justify-content:center;
+    position:relative;
+    overflow:hidden;
+  }
+  .tier-eyebrow{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:var(--muted); margin-bottom:10px;}
+  .tier-badge{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:8px 16px; border-radius:30px;
+    font-size:15px; font-weight:800; color:#fff;
+    width:fit-content; margin-bottom:12px;
+    box-shadow:0 6px 16px -6px rgba(0,0,0,0.35);
+  }
+  .tier-badge .icon{font-size:15px;}
+  .tier-desc{font-size:13px; color:var(--muted); line-height:1.55;}
+
+  /* Factor breakdown */
+  .factors-card{padding:22px 24px; margin-bottom:22px;}
+  .factors-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;}
+  .factors-head h3{font-size:14.5px; font-weight:700;}
+  .factors-head span{font-size:11px; color:var(--muted); font-family:var(--mono);}
+
+  .factor-row{margin-bottom:14px;}
+  .factor-row:last-child{margin-bottom:0;}
+  .factor-label{
+    display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:5px;
+  }
+  .factor-label .fname{font-weight:600; color:var(--ink);}
+  .factor-label .fweight{color:var(--muted); font-size:10.5px; font-family:var(--mono);}
+  .factor-label .fval{font-family:var(--mono); font-weight:700; color:var(--navy);}
+  .factor-track{width:100%; height:8px; border-radius:5px; background:var(--line); overflow:hidden;}
+  .factor-fill{height:100%; border-radius:5px; transition:width .5s cubic-bezier(.4,0,.2,1);}
+
+  /* Batch section */
+  .batch-card{padding:22px 24px; margin-bottom:22px;}
+  .batch-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; flex-wrap:wrap; gap:10px;}
+  .batch-head h3{font-size:14.5px; font-weight:700;}
+  .batch-sub{font-size:12px; color:var(--muted); margin-bottom:14px;}
+  textarea{
+    width:100%; min-height:110px; padding:12px; border-radius:8px;
+    border:1.5px solid var(--line); font-family:var(--mono); font-size:12.5px;
+    resize:vertical; background:#FBFCFE;
+  }
+  textarea:focus{outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(37,158,239,0.15);}
+  .batch-actions{display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;}
+  .btn-secondary{
+    background:#fff; color:var(--navy); border:1.5px solid var(--navy);
+    padding:10px 18px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;
+  }
+  .btn-secondary:hover{background:#F0F6FF;}
+  .btn-ghost{
+    background:transparent; color:var(--muted); border:1.5px solid var(--line);
+    padding:10px 18px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;
+  }
+  .btn-ghost:hover{border-color:var(--muted);}
+
+  .batch-results{margin-top:18px;}
+  .dist-bar{
+    display:flex; width:100%; height:34px; border-radius:8px; overflow:hidden;
+    margin-bottom:14px; box-shadow:inset 0 0 0 1px var(--line);
+  }
+  .dist-seg{
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:11px; font-weight:700; font-family:var(--mono);
+    transition:width .4s;
+    min-width:0; overflow:hidden; white-space:nowrap;
+  }
+  .dist-legend{display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px; font-size:11.5px;}
+  .dist-legend-item{display:flex; align-items:center; gap:6px;}
+  .dist-legend-item .sw{width:10px; height:10px; border-radius:3px;}
+
+  table.batch-table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  table.batch-table th{
+    text-align:left; padding:9px 10px; background:#F5F8FC; font-size:10.5px;
+    text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); font-weight:700;
+    border-bottom:1.5px solid var(--line);
+  }
+  table.batch-table td{padding:9px 10px; border-bottom:1px solid var(--line); font-family:var(--mono);}
+  table.batch-table td.name{font-family:var(--sans); font-weight:600;}
+  .table-badge{
+    display:inline-block; padding:3px 9px; border-radius:20px; font-size:10.5px; font-weight:700; color:#fff;
+  }
+  .table-wrap{overflow-x:auto; border-radius:8px; border:1px solid var(--line);}
+
+  /* Footer */
+  footer{
+    text-align:center; padding:32px 20px 40px;
+    color:var(--navy-deep);
+  }
+  footer .tagline{
+    font-size:15px; font-weight:800; letter-spacing:0.3px;
+    background:linear-gradient(120deg, var(--navy), var(--blue));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  footer .sub{font-size:11.5px; color:var(--muted); margin-top:6px;}
+
+  .empty-note{
+    font-size:11px; color:var(--muted); text-align:center; padding:20px;
+  }
+
+  @media (max-width:600px){
+    .score-number{font-size:48px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark">LF</div>
+    <div>
+      <h1>LongTail Forge</h1>
+      <p>AI Decision Engine · ROI-First SKU Routing</p>
+    </div>
+  </div>
+  <div class="header-stats">
+    <div class="hstat"><div class="num" id="stat-total">128,430</div><div class="lbl">Total SKUs</div></div>
+    <div class="hstat"><div class="num" id="stat-scored">1</div><div class="lbl">Scored This Session</div></div>
+  </div>
+</header>
+
+<div class="shell">
+  <div class="app-grid">
+
+    <!-- LEFT: FORM -->
+    <div class="card">
+      <div class="panel-head">
+        <div class="dot"></div>
+        <h2>SKU Input</h2>
+        <span>ROI SCORER v1.0</span>
+      </div>
+      <div class="form-body">
+        <div class="field">
+          <label for="sku-name">SKU Name / ID</label>
+          <input type="text" id="sku-name" value="SKU-88213 — Industrial Bearing, 6205-2RS">
+        </div>
+
+        <div class="field">
+          <label for="revenue">Revenue Potential <span class="val" id="revenue-val">92</span></label>
+          <div class="slider-row"><input type="range" id="revenue" min="0" max="100" value="92"></div>
+          <div class="field-hint">Projected revenue contribution if fully enriched.</div>
+        </div>
+
+        <div class="field">
+          <label for="traffic">Traffic <span class="val" id="traffic-val">88</span></label>
+          <div class="slider-row"><input type="range" id="traffic" min="0" max="100" value="88"></div>
+          <div class="field-hint">Search & page-view volume relative to catalog.</div>
+        </div>
+
+        <div class="field">
+          <label for="demand">Demand <span class="val" id="demand-val">81</span></label>
+          <div class="slider-row"><input type="range" id="demand" min="0" max="100" value="81"></div>
+          <div class="field-hint">Order frequency and reorder signal strength.</div>
+        </div>
+
+        <div class="field">
+          <label for="importance">Business Importance <span class="val" id="importance-val">95</span></label>
+          <div class="slider-row"><input type="range" id="importance" min="0" max="100" value="95"></div>
+          <div class="field-hint">Strategic weight — key accounts, contracts, categories.</div>
+        </div>
+
+        <div class="field">
+          <label for="dataquality">Data Quality Gap <span class="val" id="dataquality-val">55</span></label>
+          <div class="slider-row"><input type="range" id="dataquality" min="0" max="100" value="55"></div>
+          <div class="field-hint">How incomplete the current listing is. Higher = worse data, more AI value-add.</div>
+        </div>
+
+        <button class="btn btn-primary" onclick="calculateAndRender()">Calculate ROI Score</button>
+      </div>
+
+      <div class="examples-wrap">
+        <div class="examples-title">Sample SKUs — click to load</div>
+        <div id="examples-list"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: RESULTS -->
+    <div>
+      <div class="results-top">
+        <div class="card score-card">
+          <div class="sku-name">SKU</div>
+          <div class="sku-title" id="result-sku-name">—</div>
+          <div class="score-display">
+            <div class="score-number" id="score-number">0</div>
+            <div class="score-outof">/ 100</div>
+          </div>
+          <div class="score-bar-track"><div class="score-bar-fill" id="score-bar-fill" style="width:0%;"></div></div>
+          <div class="score-scale"><span>0 · Deferred</span><span>25</span><span>50</span><span>75</span><span>100 · Full AI</span></div>
+        </div>
+
+        <div class="card tier-card" id="tier-card">
+          <div class="tier-eyebrow">Routing Decision</div>
+          <div class="tier-badge" id="tier-badge"><span class="icon">—</span><span id="tier-name">Awaiting input</span></div>
+          <div class="tier-desc" id="tier-desc">Calculate a score to see where this SKU gets routed in the 4-tier AI Decision Engine.</div>
+        </div>
+      </div>
+
+      <div class="card factors-card">
+        <div class="factors-head">
+          <h3>Input Factors</h3>
+          <span>Weighted contribution to ROI Score</span>
+        </div>
+        <div id="factors-list"></div>
+      </div>
+
+      <div class="card batch-card">
+        <div class="batch-head">
+          <h3>Batch Upload — Route Multiple SKUs</h3>
+        </div>
+        <div class="batch-sub">Paste CSV rows: <code>SKU, Revenue, Traffic, Demand, Importance, DataQualityGap</code></div>
+        <textarea id="batch-input" placeholder="SKU-40217, 55, 50, 60, 45, 40
+SKU-91027, 77, 35, 40, 82, 30
+SKU-11985, 19, 22, 15, 18, 70">SKU-40217, 55, 50, 60, 45, 40
+SKU-91027, 77, 35, 40, 82, 30
+SKU-11985, 19, 22, 15, 18, 70
+SKU-77704, 88, 79, 85, 90, 20
+SKU-33561, 40, 38, 42, 35, 65</textarea>
+        <div class="batch-actions">
+          <button class="btn-secondary" onclick="runBatch()">Route Batch</button>
+          <button class="btn-ghost" onclick="exportCSV()">Export Results (CSV)</button>
+          <button class="btn-ghost" onclick="clearBatch()">Clear</button>
+        </div>
+
+        <div class="batch-results" id="batch-results" style="display:none;">
+          <div class="dist-bar" id="dist-bar"></div>
+          <div class="dist-legend" id="dist-legend"></div>
+          <div class="table-wrap">
+            <table class="batch-table">
+              <thead>
+                <tr><th>SKU</th><th>Revenue</th><th>Traffic</th><th>Demand</th><th>Importance</th><th>DQ Gap</th><th>ROI Score</th><th>Decision</th></tr>
+              </thead>
+              <tbody id="batch-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="tagline">Enrich smarter, not harder.</div>
+  <div class="sub">LongTail Forge — AI-Powered ROI Optimization Agent · UniHack Prototype</div>
+</footer>
+
+<script>
+// ---------------- Tier / color config ----------------
+const TIERS = [
+  { key:'full',     min:75, max:100, label:'Full AI Enrichment',  color:'#1E9E6B', icon:'●',
+    desc:'High revenue and high traffic. Complete AI-generated content — titles, specs, images, cross-sell — goes live automatically.' },
+  { key:'basic',     min:50, max:74.999, label:'Basic AI Enrichment', color:'#259EEF', icon:'●',
+    desc:'Moderate-value SKU. Core attributes only — enough to be searchable and correctly categorized, without full content investment.' },
+  { key:'human',     min:25, max:49.999, label:'Human Review',      color:'#E0982A', icon:'●',
+    desc:'Low AI confidence or high-stakes listing. Escalated to a human reviewer before anything reaches the live catalog.' },
+  { key:'deferred',  min:0,  max:24.999, label:'Deferred',          color:'#C4472F', icon:'●',
+    desc:'Low ROI today. Queued for re-scoring as demand signals shift — no enrichment spend until it earns priority.' },
+];
+
+function getTier(score){
+  return TIERS.find(t => score >= t.min && score <= t.max) || TIERS[TIERS.length-1];
+}
+
+// ---------------- Scoring engine ----------------
+function calcROI({revenue, traffic, demand, importance, dataQualityGap}){
+  const raw = (revenue*0.25) + (traffic*0.20) + (demand*0.20) + (importance*0.25) + ((100-dataQualityGap)*0.10);
+  // weights sum to 1.0 already (0.25+0.20+0.20+0.25+0.10=1.00), so raw is already 0-100
+  return Math.max(0, Math.min(100, Math.round(raw*10)/10));
+}
+
+// ---------------- Sample SKUs (from pitch deck) ----------------
+const SAMPLES = [
+  { name:'SKU-88213 — Industrial Bearing, 6205-2RS', revenue:92, traffic:88, demand:81, importance:95, dataQualityGap:55 },
+  { name:'SKU-40217 — Hex Bolt Set, M8 Zinc-Plated',  revenue:55, traffic:50, demand:60, importance:45, dataQualityGap:40 },
+  { name:'SKU-91027 — Pressure Sensor, 0–10 Bar',      revenue:77, traffic:35, demand:40, importance:82, dataQualityGap:30 },
+  { name:'SKU-11985 — Replacement Gasket, Legacy Line',revenue:19, traffic:22, demand:15, importance:18, dataQualityGap:70 },
+  { name:'SKU-77704 — Servo Motor Coupling, High-Torque',revenue:88, traffic:79, demand:85, importance:90, dataQualityGap:20 },
+];
+
+let sessionCount = 1;
+
+// ---------------- Rendering ----------------
+function renderExamples(){
+  const wrap = document.getElementById('examples-list');
+  wrap.innerHTML = '';
+  SAMPLES.forEach((s, i) => {
+    const score = calcROI(s);
+    const tier = getTier(score);
+    const chip = document.createElement('div');
+    chip.className = 'example-chip';
+    chip.onclick = () => loadSample(i);
+    chip.innerHTML = `<span class="ename">${s.name.split('—')[0].trim()}</span><span class="escore" style="background:${tier.color}">${score}</span>`;
+    wrap.appendChild(chip);
+  });
+}
+
+function loadSample(i){
+  const s = SAMPLES[i];
+  document.getElementById('sku-name').value = s.name;
+  setSlider('revenue', s.revenue);
+  setSlider('traffic', s.traffic);
+  setSlider('demand', s.demand);
+  setSlider('importance', s.importance);
+  setSlider('dataquality', s.dataQualityGap);
+  calculateAndRender();
+}
+
+function setSlider(id, val){
+  const el = document.getElementById(id);
+  el.value = val;
+  document.getElementById(id+'-val').textContent = val;
+  updateSliderFill(el);
+}
+
+function updateSliderFill(el){
+  el.style.setProperty('--fill', el.value + '%');
+}
+
+function scoreColor(score){
+  if(score>=75) return '#1E9E6B';
+  if(score>=50) return '#259EEF';
+  if(score>=25) return '#E0982A';
+  return '#C4472F';
+}
+
+function calculateAndRender(){
+  const name = document.getElementById('sku-name').value || 'Untitled SKU';
+  const revenue = +document.getElementById('revenue').value;
+  const traffic = +document.getElementById('traffic').value;
+  const demand = +document.getElementById('demand').value;
+  const importance = +document.getElementById('importance').value;
+  const dataQualityGap = +document.getElementById('dataquality').value;
+
+  const score = calcROI({revenue, traffic, demand, importance, dataQualityGap});
+  const tier = getTier(score);
+
+  // score card
+  document.getElementById('result-sku-name').textContent = name;
+  const scoreEl = document.getElementById('score-number');
+  scoreEl.textContent = score;
+  scoreEl.style.color = scoreColor(score);
+  document.getElementById('score-bar-fill').style.width = score + '%';
+  document.getElementById('score-bar-fill').style.background = scoreColor(score);
+
+  // tier card
+  const tierCard = document.getElementById('tier-card');
+  document.getElementById('tier-badge').style.background = tier.color;
+  document.getElementById('tier-name').textContent = tier.label;
+  document.getElementById('tier-desc').textContent = tier.desc;
+  tierCard.style.background = `linear-gradient(160deg, ${tier.color}12, #ffffff 55%)`;
+  tierCard.style.borderColor = tier.color + '55';
+
+  // factors
+  const factors = [
+    { label:'Revenue Potential', val:revenue, weight:'25%', color:'#259EEF' },
+    { label:'Traffic', val:traffic, weight:'20%', color:'#259EEF' },
+    { label:'Demand', val:demand, weight:'20%', color:'#259EEF' },
+    { label:'Business Importance', val:importance, weight:'25%', color:'#0B3878' },
+    { label:'Data Quality Gap', val:dataQualityGap, weight:'10% (inv.)', color:'#C4472F' },
+  ];
+  const flist = document.getElementById('factors-list');
+  flist.innerHTML = '';
+  factors.forEach(f => {
+    const row = document.createElement('div');
+    row.className = 'factor-row';
+    row.innerHTML = `
+      <div class="factor-label">
+        <span class="fname">${f.label} <span class="fweight">(${f.weight})</span></span>
+        <span class="fval">${f.val}%</span>
+      </div>
+      <div class="factor-track"><div class="factor-fill" style="width:${f.val}%; background:${f.color};"></div></div>
+    `;
+    flist.appendChild(row);
+  });
+
+  sessionCount++;
+  document.getElementById('stat-scored').textContent = sessionCount;
+}
+
+// ---------------- Slider live updates ----------------
+['revenue','traffic','demand','importance','dataquality'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => {
+    document.getElementById(id+'-val').textContent = el.value;
+    updateSliderFill(el);
+  });
+  updateSliderFill(el);
+});
+
+// ---------------- Batch processing ----------------
+let lastBatchResults = [];
+
+function parseBatchLine(line){
+  const parts = line.split(',').map(p => p.trim());
+  if(parts.length < 6) return null;
+  const [name, revenue, traffic, demand, importance, dqg] = parts;
+  if([revenue,traffic,demand,importance,dqg].some(v => v === '' || isNaN(+v))) return null;
+  return {
+    name,
+    revenue:+revenue, traffic:+traffic, demand:+demand,
+    importance:+importance, dataQualityGap:+dqg
+  };
+}
+
+function runBatch(){
+  const raw = document.getElementById('batch-input').value;
+  const lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const results = [];
+  lines.forEach(line => {
+    const parsed = parseBatchLine(line);
+    if(!parsed) return;
+    const score = calcROI(parsed);
+    const tier = getTier(score);
+    results.push({...parsed, score, tier});
+  });
+
+  lastBatchResults = results;
+  document.getElementById('batch-results').style.display = results.length ? 'block' : 'none';
+  if(!results.length) return;
+
+  // distribution bar
+  const counts = {full:0, basic:0, human:0, deferred:0};
+  results.forEach(r => counts[r.tier.key]++);
+  const total = results.length;
+  const distBar = document.getElementById('dist-bar');
+  distBar.innerHTML = '';
+  TIERS.forEach(t => {
+    const pct = (counts[t.key] / total * 100);
+    if(pct <= 0) return;
+    const seg = document.createElement('div');
+    seg.className = 'dist-seg';
+    seg.style.width = pct + '%';
+    seg.style.background = t.color;
+    seg.textContent = pct >= 8 ? Math.round(pct) + '%' : '';
+    distBar.appendChild(seg);
+  });
+
+  const legend = document.getElementById('dist-legend');
+  legend.innerHTML = '';
+  TIERS.forEach(t => {
+    const pct = Math.round(counts[t.key] / total * 100);
+    const item = document.createElement('div');
+    item.className = 'dist-legend-item';
+    item.innerHTML = `<span class="sw" style="background:${t.color}"></span>${t.label} — ${pct}% (${counts[t.key]})`;
+    legend.appendChild(item);
+  });
+
+  // table
+  const tbody = document.getElementById('batch-tbody');
+  tbody.innerHTML = '';
+  results.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="name">${r.name}</td>
+      <td>${r.revenue}</td>
+      <td>${r.traffic}</td>
+      <td>${r.demand}</td>
+      <td>${r.importance}</td>
+      <td>${r.dataQualityGap}</td>
+      <td style="color:${scoreColor(r.score)}; font-weight:700;">${r.score}</td>
+      <td><span class="table-badge" style="background:${r.tier.color}">${r.tier.label}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function clearBatch(){
+  document.getElementById('batch-input').value = '';
+  document.getElementById('batch-results').style.display = 'none';
+  lastBatchResults = [];
+}
+
+function exportCSV(){
+  if(!lastBatchResults.length){
+    alert('Run a batch first to generate results to export.');
+    return;
+  }
+  const header = 'SKU,Revenue,Traffic,Demand,Importance,DataQualityGap,ROIScore,Decision\n';
+  const rows = lastBatchResults.map(r =>
+    `"${r.name}",${r.revenue},${r.traffic},${r.demand},${r.importance},${r.dataQualityGap},${r.score},"${r.tier.label}"`
+  ).join('\n');
+  const blob = new Blob([header + rows], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'longtail-forge-routing-results.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ---------------- Init ----------------
+renderExamples();
+calculateAndRender();
+runBatch();
+</script>
+
+</body>
+</html>
